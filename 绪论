@@ -1,0 +1,121 @@
+import tensorflow as tf 
+
+# 创建4个张量
+a = tf.constant(1.)
+b = tf.constant(2.)
+c = tf.constant(3.)
+w = tf.constant(4.)
+
+
+with tf.GradientTape() as tape:# 构建梯度环境
+	tape.watch([w]) # 将w加入梯度跟踪列表
+	# 构建计算过程
+	y = a * w**2 + b * w + c
+# 求导
+[dy_dw] = tape.gradient(y, [w])
+print(dy_dw)
+
+
+import numpy as np
+import matplotlib
+from matplotlib import pyplot as plt
+
+# Default parameters for plots
+matplotlib.rcParams['font.size'] = 20
+matplotlib.rcParams['figure.titlesize'] = 20
+matplotlib.rcParams['figure.figsize'] = [9, 7]
+matplotlib.rcParams['font.family'] = ['STKaiti']
+matplotlib.rcParams['axes.unicode_minus'] = False
+
+import tensorflow as tf
+import timeit
+
+cpu_data = []
+gpu_data = []
+for n in range(9):
+    n = 10 ** n
+    # 创建在CPU上运算的2个矩阵
+    with tf.device('/cpu:0'):
+        cpu_a = tf.random.normal([1, n])
+        cpu_b = tf.random.normal([n, 1])
+        print(cpu_a.device, cpu_b.device)
+    # 创建使用GPU运算的2个矩阵
+    with tf.device('/gpu:0'):
+        gpu_a = tf.random.normal([1, n])
+        gpu_b = tf.random.normal([n, 1])
+        print(gpu_a.device, gpu_b.device)
+
+
+    def cpu_run():
+        with tf.device('/cpu:0'):
+            c = tf.matmul(cpu_a, cpu_b)
+        return c
+
+
+    def gpu_run():
+        with tf.device('/gpu:0'):
+            c = tf.matmul(gpu_a, gpu_b)
+        return c
+
+
+    # 第一次计算需要热身，避免将初始化阶段时间结算在内
+    cpu_time = timeit.timeit(cpu_run, number=10)
+    gpu_time = timeit.timeit(gpu_run, number=10)
+    print('warmup:', cpu_time, gpu_time)
+    # 正式计算10次，取平均时间
+    cpu_time = timeit.timeit(cpu_run, number=10)
+    gpu_time = timeit.timeit(gpu_run, number=10)
+    print('run time:', cpu_time, gpu_time)
+    cpu_data.append(cpu_time / 10)
+    gpu_data.append(gpu_time / 10)
+
+    del cpu_a, cpu_b, gpu_a, gpu_b
+
+x = [10 ** i for i in range(9)]
+cpu_data = [1000 * i for i in cpu_data]
+gpu_data = [1000 * i for i in gpu_data]
+plt.plot(x, cpu_data, 'C1')
+plt.plot(x, cpu_data, color='C1', marker='s', label='CPU')
+plt.plot(x, gpu_data, 'C0')
+plt.plot(x, gpu_data, color='C0', marker='^', label='GPU')
+
+plt.gca().set_xscale('log')
+plt.gca().set_yscale('log')
+plt.ylim([0, 100])
+plt.xlabel('矩阵大小n:(1xn)@(nx1)')
+plt.ylabel('运算时间(ms)')
+plt.legend()
+plt.savefig('gpu-time.svg')
+
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior() # 使用静态图模式运行以下代码
+assert tf.__version__.startswith('2.')
+
+# 1.创建计算图阶段
+# 创建2个输入端子，指定类型和名字
+a_ph = tf.placeholder(tf.float32, name='variable_a')
+b_ph = tf.placeholder(tf.float32, name='variable_b')
+# 创建输出端子的运算操作，并命名
+c_op = tf.add(a_ph, b_ph, name='variable_c')
+
+# 2.运行计算图阶段
+# 创建运行环境
+sess = tf.InteractiveSession()
+# 初始化操作也需要作为操作运行
+init = tf.global_variables_initializer()
+sess.run(init) # 运行初始化操作，完成初始化
+# 运行输出端子，需要给输入端子赋值
+c_numpy = sess.run(c_op, feed_dict={a_ph: 2., b_ph: 4.})
+# 运算完输出端子才能得到数值类型的c_numpy
+print('a+b=',c_numpy)
+#%%
+import tensorflow as tf
+assert tf.__version__.startswith('2.')
+
+# 1.创建输入张量
+a = tf.constant(2.)
+b = tf.constant(4.)
+# 2.直接计算并打印
+print('a+b=',a+b)
+
+
